@@ -1,0 +1,31 @@
+stage ('Provision Selenium Hub'){
+    node('docker'){
+		sh 'docker stop selenium-hub || echo \'No running selenium-hub container to stop\''
+        sh 'docker rm selenium-hub || echo \'No existing selenium-hub image to remove\''
+        sh 'docker run -d -p 4444:4444 --name selenium-hub selenium/hub'
+    }
+}
+
+stage ('Attach Chrome Selenium Node'){
+    node('docker'){
+		sh 'docker stop selenium-node-chrome || echo \'No running selenium-node-chrome container to stop\''
+        sh 'docker rm selenium-node-chrome || echo \'No existing selenium-node-chrome image to remove\''
+        sh 'docker run -d  --link selenium-hub:hub --name selenium-node-chrome selenium/node-chrome'
+    }
+}
+
+stage ('Execute tests'){
+    node('docker'){
+		//For example purposes, a sleep command is being used here, but in live use, this is the point where tests should be triggered
+		sleep time: 2, unit: 'MINUTES'
+    }
+}
+
+stage ('Teardown'){
+    node('docker'){
+		sh 'docker stop selenium-hub || echo \'No running selenium-hub container to stop\''
+        sh 'docker rm selenium-hub || echo \'No existing selenium-hub image to remove\''
+		sh 'docker stop selenium-node-chrome || echo \'No running selenium-node-chrome container to stop\''
+        sh 'docker rm selenium-node-chrome || echo \'No existing selenium-node-chrome image to remove\''
+    }
+}

@@ -1,0 +1,86 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+VAGRANTFILE_API_VERSION = "2"
+
+# Install vagrant reload plugin to support restarts during provisioning
+unless Vagrant.has_plugin?("vagrant-reload")
+  system("vagrant plugin install vagrant-reload")
+  puts "Vagrant reload plugin installed, please try the command again."
+  exit
+end
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+
+  # Use ubuntu trusty base box with named version
+  config.vm.box = "ubuntu/trusty64"
+  config.vm.box_version = "20180430.0.0"
+  config.vm.box_check_update = false
+  config.ssh.insert_key = false
+  
+  # Update Virtualbox provider settings
+  config.vm.provider "virtualbox" do |vb|
+    vb.cpus = 3
+    vb.memory = "4096"
+    vb.name = "ubuntu-trusty64-drupal7-vscode"
+
+    # Enable virtualbox UI to attach on boot
+    vb.gui = true
+
+    # Increase default video RAM allocation
+    vb.customize ["modifyvm", :id, "--vram", "256"]
+
+    # Enable 2D/3D graphics acceleration
+    vb.customize ["modifyvm", :id, "--accelerate2dvideo", "on"]
+    vb.customize ["modifyvm", :id, "--accelerate3d", "on"]
+
+    # Enable bidirectional clipboard with drag and drop support
+    vb.customize ["modifyvm", :id, "--clipboard", "bidirectional"]
+    vb.customize ["modifyvm", :id, "--draganddrop", "bidirectional"]
+  end
+  
+  # Copy local git ssh keys into newly provisioned VM
+  if Vagrant::Util::Platform.windows?
+    # You MUST have a ~/.ssh/id_rsa (GitHub specific) SSH key to copy to VM
+    if File.exists?(File.join(Dir.home, ".ssh", "id_rsa"))
+        id_rsa_key = File.read(File.join(Dir.home, ".ssh", "id_rsa"))
+        config.vm.provision :shell, :inline => "echo 'Copying local GitHub id_rsa SSH Key to VM for provisioning...' && mkdir -p /home/vagrant/.ssh && echo '#{id_rsa_key}' > /home/vagrant/.ssh/id_rsa && chmod 777 /home/vagrant/.ssh/id_rsa"
+    else
+        # Else, throw a Vagrant Error. Cannot successfully startup on Windows without a GitHub SSH Key!
+        raise Vagrant::Errors::VagrantError.new, "\n\nERROR: GitHub SSH Key not found at ~/.ssh/id_rsa (required on Windows).\nYou can generate this key manually OR by installing GitHub for Windows (http://windows.github.com/)\n\n"
+    end
+  end
+    
+  # Map host ports from range 8000 to 8050 for web applications from host to guest
+  for i in 8000..8050
+    config.vm.network :forwarded_port, guest: i, host: i, host_ip: "127.0.0.1"
+  end
+  
+  # Allow port range through linux firewall
+  config.vm.provision "shell", inline: "ufw allow 8000:8050/tcp"
+  
+  # Map MySQL port from host to guest
+  config.vm.network :forwarded_port, guest: 3306, host: 3308, host_ip: "127.0.0.1"
+  
+  # Allow port through linux firewall
+  config.vm.provision "shell", inline: "ufw allow 3306"
+  
+  # Configure Ubuntu
+  config.vm.provision "shell", path: "scripts/bootstrap.sh"
+
+  # Install ubuntu desktop
+  config.vm.provision "shell", path: "scripts/ubuntu-trusty64-unity-desktop.sh"
+
+  # Install Drupal dependencies (Apache, PHP, MySQL)
+  config.vm.provision "shell", path: "scripts/drupal-dev.sh"
+  
+  # Run cleanup scripts
+  config.vm.provision "shell", path: "../../global-scripts/vs-code.sh"
+
+  # Run cleanup scripts
+  config.vm.provision "shell", path: "../../global-scripts/cleanup.sh" 
+
+  # Reload machine to apply all pending changes
+  config.vm.provision :reload
+
+end

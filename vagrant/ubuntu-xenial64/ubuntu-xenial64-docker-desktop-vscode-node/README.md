@@ -1,0 +1,17 @@
+# Configuration
+
+This machine definition produces a base Ubuntu 18.04 Bionic x64 installation with the following extras:
+
+* Docker Community Edition 18.03.0
+* Docker Compose 1.8.0
+* Build Essentials (inclusive of Make etc.)
+* Ubuntu Gnome Desktop
+* Gnome Flashback
+* Node.js (8.11.2)
+* NPM (5.6)
+* VS Code
+
+## Desktop environment choice
+
+This box comes with a choice of desktop environments; Unity Gnome Desktop or Gnome Flashback. 
+Should the Unity Gnome Desktop shows sign of lag, please switch to using the Gnome Flashback desktop manager (by selecting this session type on the login screen).
